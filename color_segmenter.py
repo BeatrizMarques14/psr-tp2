@@ -5,88 +5,59 @@ import argparse
 from functools import partial
 from colorama import Fore, Style
 
+def onTrackbar(val, params, window_name):
+    # Atualize os valores no dicionário 'params'
+    params['min_R'] = cv2.getTrackbarPos('Min_R', window_name)
+    params['min_G'] = cv2.getTrackbarPos('Min_G', window_name)
+    params['min_B'] = cv2.getTrackbarPos('Min_B', window_name)
+    params['max_R'] = cv2.getTrackbarPos('Max_R', window_name)
+    params['max_G'] = cv2.getTrackbarPos('Max_G', window_name)
+    params['max_B'] = cv2.getTrackbarPos('Max_B', window_name)
+
+    min_values = np.array([params['min_B'], params['min_G'], params['min_R']], dtype=np.uint8)
+    max_values = np.array([params['max_B'], params['max_G'], params['max_R']], dtype=np.uint8)
+
+    mask = cv2.inRange(params['frame'], min_values, max_values)
+    cv2.imshow(window_name, mask)
+
+# Crie uma janela para exibir a imagem
+window_name = 'Segmented Image'
+cv2.namedWindow('Segmented Image', cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Segmented Image', 600, 900)
+
+# Inicialize os limites iniciais (R, G, B mínimos e máximos)
+val = 0
+params = {'frame': None, 'min_B': 0, 'min_G': 0, 'min_R': 0, 'max_B': 255, 'max_G': 255, 'max_R': 255}
 
 
-def onTrackbar(min_val,max_val, image, window_name):
-    
-    _,tresh = cv2.threshold(image, min_val, max_val, cv2.THRESH_BINARY)
-    cv2.imshow(window_name, tresh)
+# Inicialize a captura de vídeo da câmera (use 0 para a câmera padrão)
+cap = cv2.VideoCapture(0)
+_, params['frame'] = cap.read()
 
+# Crie trackbars para ajustar os limites
+cv2.createTrackbar('Min_R', 'Segmented Image', 0, 255, partial(onTrackbar, params=params, window_name=window_name))
+cv2.createTrackbar('Min_G', 'Segmented Image', 0, 255, partial(onTrackbar, params=params, window_name=window_name))
+cv2.createTrackbar('Min_B', 'Segmented Image', 0, 255, partial(onTrackbar, params=params, window_name=window_name))
+cv2.createTrackbar('Max_R', 'Segmented Image', 255, 255, partial(onTrackbar, params=params, window_name=window_name))
+cv2.createTrackbar('Max_G', 'Segmented Image', 255, 255, partial(onTrackbar, params=params, window_name=window_name))
+cv2.createTrackbar('Max_B', 'Segmented Image', 255, 255, partial(onTrackbar, params=params, window_name=window_name))
 
+cv2.setTrackbarPos('Max_B',window_name,255)
 
-def main():
+while True:
+    # Captura um quadro da câmera
+    _, params['frame'] = cap.read()
 
+    onTrackbar(val, params, window_name)
 
-    # Initialization
-    blue_image = {'image': None,'min_val':0, 'max_val':255}
-    green_image = {'image': None,'min_val':0, 'max_val':255}
-    red_image = {'image': None,'min_val':0, 'max_val':255}
+    # Exiba a imagem da máscara
+    key = cv2.waitKey(25)
+    if key == ord('w'):
+        {'limits': {'B': {'max': params['max_B'], 'min': params['min_B']},
+            'G': {'max': params['max_G'], 'min': params['min_G']},
+            'R': {'max': params['max_R'], 'min': params['min_R']}}}
+        break
 
-
-
-    capture = cv2.VideoCapture(0)
-    _, image = capture.read()  # get an image from the camera
-    [blue_image['image'], green_image['image'], red_image['image']] = cv2.split(image)  #split the image in the 3 bgr channels
-    window_name = 'Video'
-    mask_name = 'Mask'
-    cv2.namedWindow(window_name,cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(window_name,800,600)
-    cv2.namedWindow(mask_name, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(mask_name, 800,900)
-
-    #Criar as trakbars para o azul
-    cv2.createTrackbar('Bmin (0,255)', mask_name, 0, 255, partial(onTrackbar, max_val = 255,image = blue_image['image'], window_name = mask_name))
-    cv2.createTrackbar('Bmax (0,255)', mask_name, 0, 255, partial(onTrackbar, max_val = 255,image = blue_image['image'], window_name = mask_name))
-    
-    #Criar as trakbars para o verde
-    cv2.createTrackbar('Gmin (0,255)', mask_name, 0, 255, partial(onTrackbar, max_val = 255, image = green_image['image'], window_name = mask_name))
-    cv2.createTrackbar('Gmax (0,255)', mask_name, 0, 255, partial(onTrackbar, max_val = 255, image = green_image['image'], window_name = mask_name))
-
-    #Criar as trakbars para o vermelho
-    cv2.createTrackbar('Rmin (0,255)', mask_name, 0, 255, partial(onTrackbar, max_val = 255, image = red_image['image'], window_name = mask_name))
-    cv2.createTrackbar('Rmax (0,255)', mask_name, 0, 255, partial(onTrackbar, max_val = 255, image = red_image['image'], window_name = mask_name))
-
-    #colocar as trakbars no valor minimo e maximo
-    cv2.setTrackbarPos('Bmin (0,255)',mask_name, blue_image['min_val'])
-    cv2.setTrackbarPos('Bmax (0,255)',mask_name, blue_image['max_val'])
-
-    cv2.setTrackbarPos('Gmin (0,255)',mask_name, green_image['min_val'])
-    cv2.setTrackbarPos('Gmax (0,255)',mask_name, green_image['max_val'])
-
-    cv2.setTrackbarPos('Rmin (0,255)',mask_name, red_image['min_val'])
-    cv2.setTrackbarPos('Rmax (0,255)',mask_name, red_image['max_val'])
-
-
-    #Execution
-    while True:
-        _, image = capture.read()  # get an image from the camera
-        [blue_image['image'], green_image['image'], red_image['image']] = cv2.split(image)  #split the image in the 3 bgr channels
-
-        #verifica os valores das trackbars
-        blue_image['min_val'] = cv2.getTrackbarPos('Bmin (0,255)', mask_name)
-        blue_image['max_val'] = cv2.getTrackbarPos('Bmax (0,255)', mask_name)
-
-        green_image['min_val'] = cv2.getTrackbarPos('Gmin (0,255)', mask_name)
-        green_image['max_val'] = cv2.getTrackbarPos('Gmax (0,255)', mask_name)
-
-        red_image['min_val'] = cv2.getTrackbarPos('Rmin (0,255)', mask_name)
-        red_image['max_val'] = cv2.getTrackbarPos('Rmax (0,255)', mask_name)
-        
-    
-
-        # Visualization
-
-        cv2.imshow(window_name, image)
-        
-        #aplica os tresholds
-        onTrackbar(blue_image['min_val'], blue_image['max_val'], blue_image['image'],mask_name)
-        onTrackbar(green_image['min_val'], green_image['max_val'], green_image['image'],mask_name)
-        onTrackbar(red_image['min_val'], red_image['max_val'], red_image['image'],mask_name)
-
-        key = cv2.waitKey(25)
-        if key == ord('w'):
-            break
-
-
-if __name__ == '__main__':
-    main()
+# Libere a câmera e feche todas as janelas
+cap.release()
+cv2.destroyAllWindows()
