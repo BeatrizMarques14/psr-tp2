@@ -1,21 +1,43 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import cv2
-import numpy as np
 import argparse
 from functools import partial
 from colorama import Fore, Back, Style
 from functions import apply_mask
 import json
+import math
 
 #funcao para detetar os comandos recebidos, chamada a cada instante, tal como a lapis
-def comandos():
+def comandos(draw_data):
+    
+    k = waitKey(10);
 
-    #waitkey com um intervalo muito pequeno, mas nao zero
-    #deteta a letra
-    #manda numero com codigo, que usaremos na de pintar 
-
-    return 0
+    if k == ord('r'):
+        draw_data['cores'] = (255,0,0)
+    elif k == ord('g'):
+        draw_data['cores'] = (0,255,0)
+    elif k == ord('b'):
+        draw_data['cores'] = (0,0,255)
+    elif k == ord('+'):
+        if draw_data['tamanho'] < 20:
+            draw_data['tamanho'] = draw_data['tamanho'] + 2;
+    elif k == ord('-'):
+        if draw_data['tamanho'] > 2:
+            draw_data['tamanho'] = draw_data['tamanho'] - 2;
+    elif k == ord('w'):
+        return 6; #guardar a imagem
+    elif k == ord('c'):
+        return 5 #limpar a imagem
+    elif k == ord('a'):
+        return 4 #retornar aceitacao de circulo ou de retangulo
+    elif k == ord('d'):
+        return 1 #serve para cancelar, logo retorna um ponto
+    elif k == ord('o'):
+        return 3 #comecar circulo
+    elif k == ord('s'):
+        return 2 # retorna quadrado
+    else:
+        return 0 #retorna linha
 
 #lapis vai detetar e dar a posicao do lapis, sem ser filtrada
 def lapis(video_frame, limits, video_name, mask_name):
@@ -60,6 +82,24 @@ def lapis(video_frame, limits, video_name, mask_name):
 
     return centroid_x, centroid_y
 
+
+def pinta(draw_data):
+    action = draw_data['action']
+    
+    match action:
+        case 0:
+            print("TODO")
+        case 1:
+            print("TODO")
+        case 2:
+            (x,y) = draw_data['centro'];
+            (x1,y1) = draw_data['coords'];
+            raio = math.sqrt((x-x1)**2 + (y-y1)**2)
+            cv2.circle(img, (x,y), raio,draw_data['cores'], draw_data['tamanho']) 
+        case 3:
+            print("TODO")
+
+
 #funcao principal, onde se executara o ciclo
 def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas):
 
@@ -78,6 +118,25 @@ def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas):
     #chama o shake detection para corrigir a posicao do lapis
     #caso ocorra o evento de usarmos o rato, atualiza novamente a posicao do lapis
 
+def pintar_loop():
+
+    draw_data = {'cores' : (0,0,0), # comeca a preto
+                 'tamanho' : 3, #3 pixeis inicialmente, depois ver se e muito 
+                 'action': 0, 
+                 'centro': (-1,-1), #-coordenadas do ponto inicial do quadrado ou elipse ou linha
+                 'coords': (-1,-1) #coordenadas do cursor atuais
+           }
+    while True:
+        coords = lapis();
+        coords = shake_detection(coords, draw_data);
+        #colocar aqui o que fazer com o rato, do genero se ele e afetado pelo shake detection ou nao
+        draw_data['coords'] = coords
+        comandos(draw_data);
+        pinta(draw_data) #eventualmente coloca a imagem 
+
+
+    
+
     #chama a comandos
     #verifica o codigo que recebemos
     #se for algo tratar aqui
@@ -90,6 +149,15 @@ def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas):
 
 
 def main() :
+
+    parser = argparse.ArgumentParser(description="Parser do ar_pain");
+    nome_default = "./limits_trololo.json";
+    parser.add_argument('-j','--json', type=str, default=nome_default,help='Nome do ficheiro JSON onde se encontram os limites da segmentação');
+    args = vars(parser.parse_args())
+
+    print("O nome do ficheiro é:", args['json'])
+
+    
 
     #Recebe argumentos
     #-j JSON ou --json JSON
