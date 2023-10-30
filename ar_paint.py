@@ -26,22 +26,36 @@ def lapis(video_frame, limits, video_name, mask_name):
     cv2.imshow(video_name, video_frame)
     cv2.imshow(mask_name, mask)
     #Mostrar imagemm com o objeto maior, e colocar a verde na imagem original
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask)
 
-    #calcular o centroide
-    non_zero_points = cv2.findNonZero(mask)
+    # Encontre o rótulo do maior componente (excluindo o componente de fundo)
+    largest_label = np.argmax(stats[1:, cv2.CC_STAT_AREA]) + 1
 
-    if non_zero_points is not None:
-        # Calcule o centroide como a média das coordenadas x e y
+    # Crie uma nova máscara com base no maior componente
+    largest_mask = np.zeros_like(mask)
+    largest_mask[labels == largest_label] = 255
 
-        centroid_x = int(np.mean(non_zero_points[:, 0, 0]))
-        centroid_y = int(np.mean(non_zero_points[:, 0, 1]))
+    # Defina a cor verde para a máscara do maior componente
+    largest_mask_color = cv2.merge((np.zeros_like(largest_mask), largest_mask, np.zeros_like(largest_mask)))
+
+    # Sobreponha a máscara na imagem original
+    result = cv2.addWeighted(video_frame, 1, largest_mask_color, 1, 0)
+
+    # Exiba a imagem resultante
+    cv2.imshow(video_name, result)
+
+    centroid_x = int(centroids[largest_label][0])
+    centroid_y = int(centroids[largest_label][1])
+    
 
 
-        #Colocar cruz vermelha no centroide da imagem original
-        cv2.circle(video_frame,(centroid_x,centroid_y),10,(0,0,255),-1)
-        cv2.imshow(video_name, video_frame)
-    else:
-        centroid_x, centroid_y = 0
+    #Colocar cruz vermelha no centroide da imagem original
+    cv2.circle(result,(centroid_x,centroid_y),10,(0,0,255),-1)
+    cv2.imshow(video_name,result)
+
+
+
+    
     #Mandar a coordenada do centroide
 
     return centroid_x, centroid_y
@@ -126,6 +140,7 @@ def main() :
 
 if __name__ == "__main__":
     main()
+
 
 
 
