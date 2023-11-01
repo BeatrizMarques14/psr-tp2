@@ -6,6 +6,7 @@ import numpy as np
 from functools import partial
 from colorama import Fore, Back, Style
 import time
+import random
 
 height = 480
 width = 640
@@ -57,6 +58,60 @@ def draw(image_rgb, window_name, pos, drawing_data):
 
 
 
+def cria_zonas(zonas, cores):
+    global image_rgb
+    height, width, nc = image_rgb.shape
+
+
+    x_y = random.randint(0,1)                
+
+    font = cv2.FONT_HERSHEY_SIMPLEX 
+    org = (50, 50) 
+    fontScale = 1
+    color = (0, 0, 0) 
+    thickness = 2
+       
+    cores = [1, 2, 3, 4, 5]
+
+
+    zonas_list = []
+    for i in range(zonas):
+        x_y = 1 - x_y
+        if x_y == 0:
+            x_1 = random.randint(20, width-20)
+            x_2 = random.randint(20,width-20)
+            cv2.line(image_rgb, (x_1, 0), (x_2, height), (0,0,0), 3)
+
+            y = height // 2
+
+            half = (x_1 + x_2) // 2
+
+            zonas_list.append(((x_1,0) ,(x_2,  height)))
+        else:
+            y_1 = random.randint(20,height-20)
+            y_2 = random.randint(20,height-20)
+
+            x = width // 2
+            half = (y_2 + y_1) // 2
+
+            cv2.line(image_rgb, (0, y_1), (width, y_2), (0,0,0), 3)
+            zonas_list.append(((0, y_1), (width ,y_2)))
+    
+    image_gray = cv2.cvtColor(image_rgb, cv2.COLOR_BGR2GRAY)
+    output = cv2.connectedComponentsWithStats(image_gray)
+    (numLabels, labels, stats, centroids) = output
+
+    print("CENTOIRDS", centroids)
+
+    l = len(centroids)
+    for i in range(1, l):
+        (x,y) = centroids[i]
+        x1 = int(x) - 5
+        y1 = int(y) + 10
+        image_rgb = cv2.putText(image_rgb, str(cores[(i+1)//5]), (x1, y1), font,  fontScale, color, thickness, cv2.LINE_AA) 
+
+
+
 def main():
     global image_rgb
 
@@ -70,13 +125,11 @@ def main():
     drawing_data = {'pencil_down' : False, 'previous_x' : 0, 'previous_y': 0, 'color' : (0,0,0), 'draw': 1, 'draw_previous' :1, 'center': (0,0), 'size' : 3}
 
     cv2.setMouseCallback(window_name, partial(mouseCallback, window_name = window_name, drawing_data = drawing_data))
+    cria_zonas(3,4)
     cv2.imshow(window_name, image_rgb)
     
     while True:
         key = cv2.waitKey(50)
-        print(key)
-        #if(key == -1):
-            #cv2.imshow(window_name, image)
         if key == ord('q'):
             print("quiting")
             break
