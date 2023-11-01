@@ -10,7 +10,7 @@ import math
 #funcao para detetar os comandos recebidos, chamada a cada instante, tal como a lapis
 def comandos(draw_data):
     
-    k = waitKey(10);
+    k = waitKey(0);
 
     if k == ord('r'):
         draw_data['cores'] = (255,0,0)
