@@ -8,6 +8,7 @@ from colorama import Fore, Back, Style
 from functions import apply_mask
 import json
 import datetime
+from PIL import Image
 
 def mouseCallback(event,x,y,flags,*userdata, image,window_name, drawing_data, shake_detection):
 
@@ -26,9 +27,11 @@ def mouseCallback(event,x,y,flags,*userdata, image,window_name, drawing_data, sh
              paint = shake_prevention(drawing_data, window_name, image)
              if paint == False:
                  cv2.line(image,drawing_data['previous_coords'], (x,y), drawing_data['cores'], drawing_data['tamanho'])
+         else:
+            cv2.line(image,drawing_data['previous_coords'], (x,y), drawing_data['cores'], drawing_data['tamanho'])
 
 
-    cv2.imshow(window_name, image)
+    #cv2.imshow(window_name, image)
 
     drawing_data['previous_coords'] = (x,y)
 
@@ -99,7 +102,7 @@ def pintar_tela(draw_data, paint_name, canvas, shake):
     paint = shake_prevention(draw_data, paint_name, canvas)
     if paint == False:
         cv2.line(canvas,draw_data['previous_coords'], draw_data['coords'], draw_data['cores'], draw_data['tamanho'])
-        cv2.imshow(paint_name, canvas)
+        
 
 
 #lapis vai detetar e dar a posicao do lapis, sem ser filtrada
@@ -149,8 +152,11 @@ def lapis(video_frame, limits, video_name, mask_name):
     
     return centroid_x, centroid_y
 
+
+
+
 #funcao principal, onde se executara o ciclo
-def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, shake):
+def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, shake,video_stream):
 
     draw_data = {'cores' : (0,0,0), # comeca a preto
                  'tamanho' : 3, #3 pixeis inicialmente, depois ver se e muito 
@@ -165,6 +171,7 @@ def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, sha
 
     while(True):
             result, video_frame = video_capture.read()
+            
 
             #chama o lapis
             draw_data['previous_coords'] = draw_data['coords']
@@ -175,6 +182,21 @@ def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, sha
             key = comandos(draw_data, canvas, drawing_data_mouse)
             #if paint == False:
             pintar_tela(draw_data, paint_name, canvas, shake)
+
+            if video_stream:
+                canvas_video = video_frame.copy()
+                mask_b = cv2.inRange(canvas, (0,0,0), (255,0,0))
+                mask_g = cv2.inRange(canvas, (0,255,0), (0,255,0))
+                mask_r = cv2.inRange(canvas, (0,0,255), (0,0,255))
+
+                canvas_video[mask_b>0] = (255,0,0)
+                canvas_video[mask_g>0] = (0,255,0)
+                canvas_video[mask_r>0] = (0,0,255)
+
+                cv2.imshow(paint_name, canvas_video)
+
+            else:
+                cv2.imshow(paint_name, canvas)
             
             #so para teste
             #key = cv2.waitKey(5)
@@ -203,6 +225,7 @@ def main() :
     parser = argparse.ArgumentParser()
     parser.add_argument('-j', '--json', type=str, required=True,help='Full path to json file.')
     parser.add_argument('-usp', '--use_shake_prevention', help = 'Use shake prevention', action = 'store_true')
+    parser.add_argument('-vs', '--use_video_stream', help = 'instead of using a white board, use the video as your canvas', action = 'store_true')
     args = vars(parser.parse_args())
 
     #Ler os limites de la
@@ -212,6 +235,7 @@ def main() :
             limits = json_file['limits']
         
         shake = args['use_shake_prevention']
+        video_stream = args['use_video_stream']
         
 
     
@@ -237,13 +261,15 @@ def main() :
         cv2.resizeWindow(paint_name, window_width, window_height)
 
         #Criar tela
+
         canvas = np.ones((video_frame.shape[0],video_frame.shape[1],3), dtype=np.uint8)*255
+
 
         cv2.imshow(paint_name, canvas)
 
         
         #chama pintar
-        pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, shake)
+        pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, shake, video_stream)
         
             
         return 0
