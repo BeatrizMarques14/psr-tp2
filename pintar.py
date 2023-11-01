@@ -21,40 +21,35 @@ def mouseCallback(event, x, y, flags, *userdata, window_name, drawing_data):
         drawing_data['pencil_down'] = False
         print(Fore.RED + "pencil down is unset" + Style.RESET_ALL)
     if drawing_data['pencil_down'] == True:
-        if drawing_data['draw'] == 1:
-            cv2.line(image_rgb, (drawing_data['previous_x'], drawing_data['previous_y']), (x, y), drawing_data['color'], drawing_data['size'])
-        elif drawing_data['draw'] in (2, 3): #save the pivot point for the circle/square
-            drawing_data['previous_x'] = x
-            drawing_data['previous_y'] = y
-            drawing_data['draw_previous'] = drawing_data['draw']
-            drawing_data['draw'] = 6
-            cv2.imshow(window_name, image_rgb)
-            return
-        elif drawing_data['draw'] == 4: #desenhar um ponto
-            cv2.circle(image_rgb, (x, y), 3, drawing_data['color'], -1) #depois o raio do circulo vai depender do tamanho
-            drawing_data['draw'] = 1
-        elif drawing_data['draw'] == 5: #circulo foi aceite, colocar depois acao anterior para verificar se era mesmo um circulo
-            if drawing_data['draw_previous'] == 3:
-                cv2.rectangle(image_rgb, (drawing_data['previous_x'], drawing_data['previous_y']), (x,y), drawing_data['color'], drawing_data['size'])
-            elif drawing_data['draw_previous'] == 2:
-                dist = int(np.sqrt( (drawing_data['previous_x'] - x) ** 2 + (drawing_data['previous_y'] - y) ** 2))
-                cv2.circle(image_rgb, (drawing_data['previous_x'], drawing_data['previous_y']), dist, drawing_data['color'], drawing_data['size'])
-            cv2.imshow(window_name, image_rgb)
-            drawing_data['draw'] = 4
-            return
-        elif drawing_data['draw'] == 6:
-            img_cpy = np.copy(image_rgb)
-            if drawing_data['draw_previous'] == 3:
-                cv2.rectangle(img_cpy, (drawing_data['previous_x'], drawing_data['previous_y']), (x,y), drawing_data['color'], drawing_data['size'])
-            elif drawing_data['draw_previous'] == 2:
-                dist = int(np.sqrt( (drawing_data['previous_x'] - x) ** 2 + (drawing_data['previous_y'] - y) ** 2))
-                cv2.circle(img_cpy, (drawing_data['previous_x'], drawing_data['previous_y']), dist, drawing_data['color'], drawing_data['size'])
-            cv2.imshow(window_name, img_cpy)
-            return
-        elif drawing_data['draw'] == 10:
-            (height, width, cn) = image_rgb.shape
-            image_rgb = np.ones((height, width, 3), dtype=np.uint8)*255
-            drawing_data['draw'] = 4
+        draw(image_rgb, window_name, (x,y), drawing_data)
+
+
+def draw(image_rgb, window_name, pos, drawing_data):
+    (x,y) = pos
+    if drawing_data['draw'] == 1:
+        cv2.line(image_rgb, (drawing_data['previous_x'], drawing_data['previous_y']), (x, y), drawing_data['color'], drawing_data['size'])
+    elif drawing_data['draw'] in (2, 3): #save the pivot point for the circle/square
+        drawing_data['draw_previous'] = drawing_data['draw']
+        drawing_data['draw'] = 6
+    elif drawing_data['draw'] == 4: #desenhar um ponto
+        cv2.circle(image_rgb, (x, y), drawing_data['size']//2, drawing_data['color'], -1) #depois o raio do circulo vai depender do tamanho
+        drawing_data['draw'] = 1
+    elif drawing_data['draw'] == 5: #circulo foi aceite, colocar depois acao anterior para verificar se era mesmo um circulo
+        if drawing_data['draw_previous'] == 3:
+            cv2.rectangle(image_rgb, (drawing_data['previous_x'], drawing_data['previous_y']), (x,y), drawing_data['color'], drawing_data['size'])
+        elif drawing_data['draw_previous'] == 2:
+            dist = int(np.sqrt( (drawing_data['previous_x'] - x) ** 2 + (drawing_data['previous_y'] - y) ** 2))
+            cv2.circle(image_rgb, (drawing_data['previous_x'], drawing_data['previous_y']), dist, drawing_data['color'], drawing_data['size'])
+        drawing_data['draw'] = 4
+    elif drawing_data['draw'] == 6:
+        img_cpy = np.copy(image_rgb)
+        if drawing_data['draw_previous'] == 3:
+            cv2.rectangle(img_cpy, (drawing_data['previous_x'], drawing_data['previous_y']), (x,y), drawing_data['color'], drawing_data['size'])
+        elif drawing_data['draw_previous'] == 2:
+            dist = int(np.sqrt( (drawing_data['previous_x'] - x) ** 2 + (drawing_data['previous_y'] - y) ** 2))
+            cv2.circle(img_cpy, (drawing_data['previous_x'], drawing_data['previous_y']), dist, drawing_data['color'], drawing_data['size'])
+        cv2.imshow(window_name, img_cpy)
+        return
 
     cv2.imshow(window_name, image_rgb)
     drawing_data['previous_x'] = x
@@ -123,8 +118,6 @@ def main():
             new_size = drawing_data['size'] - 5
             drawing_data['size'] = max(new_size, 4)
         elif key == ord('c'):
-            print("CLEAN")
-            drawing_data['draw'] = 10 #clean
             image_rgb = np.ones((height, width, 3), dtype=np.uint8)*255
         elif key == ord('w'):
             filename = "drawing" + str(time.ctime()) + ".png"
