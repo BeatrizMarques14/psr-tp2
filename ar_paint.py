@@ -6,6 +6,8 @@ from colorama import Fore, Back, Style
 from functions import apply_mask
 import json
 import math
+import cv2
+import numpy as np
 
 #funcao para detetar os comandos recebidos, chamada a cada instante, tal como a lapis
 def comandos(draw_data):

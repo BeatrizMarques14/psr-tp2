@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import cv2
 import numpy as np
@@ -10,8 +10,7 @@ import json
 import datetime
 from PIL import Image
 
-def mouseCallback(event,x,y,flags,*userdata, image,window_name, drawing_data, shake_detection):
-
+def mouseCallback(event,x,y,flags,*userdata, image,window_name, drawing_data, shake_detection, video_stream):
     drawing_data['coords'] = (x,y)
 
     if (event == cv2.EVENT_LBUTTONDOWN):
@@ -22,21 +21,11 @@ def mouseCallback(event,x,y,flags,*userdata, image,window_name, drawing_data, sh
         drawing_data['pencil_down'] = False
         print(Fore.RED + 'pencil down released' + Style.RESET_ALL)
 
-    if drawing_data['pencil_down'] == True:
-         if shake_detection == True:
-             paint = shake_prevention(drawing_data, window_name, image)
-             if paint == False:
-                 cv2.line(image,drawing_data['previous_coords'], (x,y), drawing_data['cores'], drawing_data['tamanho'])
-         else:
-            cv2.line(image,drawing_data['previous_coords'], (x,y), drawing_data['cores'], drawing_data['tamanho'])
-
-
-    #cv2.imshow(window_name, image)
-
-    drawing_data['previous_coords'] = (x,y)
+    if drawing_data['pencil_down'] == True: 
+        pintar_tela(drawing_data, "Paint", image, shake_detection, video_stream)
 
 #funcao para detetar os comandos recebidos, chamada a cada instante, tal como a lapis
-def comandos(draw_data, canvas, draw_data_mouse):
+def comandos(draw_data, canvas):
 
     #waitkey com um intervalo muito pequeno, mas nao zero
     #deteta a letra
@@ -46,21 +35,21 @@ def comandos(draw_data, canvas, draw_data_mouse):
 
     if k == ord('r'):
         draw_data['cores'] = (0,0,255)
-        draw_data_mouse['cores'] = (0,0,255)
+        #draw_data_mouse['cores'] = (0,0,255)
     elif k == ord('g'):
         draw_data['cores'] = (0,255,0)
-        draw_data_mouse['cores'] = (0,255,0)
+        #draw_data_mouse['cores'] = (0,255,0)
     elif k == ord('b'):
         draw_data['cores'] = (255,0,0)
-        draw_data_mouse['cores'] = (0,255,0)
+        #draw_data_mouse['cores'] = (0,255,0)
     elif k == ord('+'):
         if draw_data['tamanho'] < 50:
             draw_data['tamanho'] = draw_data['tamanho'] + 2
-            draw_data_mouse['tamanho'] = draw_data_mouse['tamanho'] + 2
+            #draw_data_mouse['tamanho'] = draw_data_mouse['tamanho'] + 2
     elif k == ord('-'):
         if draw_data['tamanho'] > 2:
             draw_data['tamanho'] = draw_data['tamanho'] - 2
-            draw_data_mouse['tamanho'] = draw_data_mouse['tamanho'] - 2
+            #draw_data_mouse['tamanho'] = draw_data_mouse['tamanho'] - 2
     elif k == ord('w'):
         now = datetime.datetime.now()
         data_hora = now.strftime("%a_%b_%d_%H:%M:S_%Y")
@@ -69,15 +58,23 @@ def comandos(draw_data, canvas, draw_data_mouse):
         return 6; #guardar a imagem
     elif k == ord('c'):
         canvas.fill(255)
-        return 5 #limpar a imagem
+        return k #limpar a imagem
     elif k == ord('a'):
-        return 4 #retornar aceitacao de circulo ou de retangulo
+        draw_data['draw'] = 5
+        return 5 #retornar aceitacao de circulo ou de retangulo
     elif k == ord('d'):
-        return 1 #serve para cancelar, logo retorna um ponto
+        draw_data['draw_previous'] = draw_data['draw']
+        draw_data['draw'] = 4 #cancel
+        return 4 #serve para cancelar, logo retorna um ponto
     elif k == ord('o'):
-        return 3 #comecar circulo
+        print("CIRCULO")
+        draw_data['draw_previous'] = draw_data['draw']
+        draw_data['draw'] = 2 
+        return 2 #comecar circulo
     elif k == ord('s'):
-        return 2 # retorna quadrado
+        draw_data['draw_previous'] = draw_data['draw']
+        draw_data['draw'] = 3 
+        return 3 # retorna quadrado
     else:
         return k #retorna linha
 
@@ -89,8 +86,9 @@ def shake_prevention(draw_data, paint_name, canvas):
     dy = draw_data['coords'][1] - draw_data['previous_coords'][1]
     distance = np.sqrt(dx**2 + dy**2)
     if (distance > 250):
-        cv2.circle(canvas,draw_data['coords'], draw_data['tamanho'], draw_data['cores'])
-        cv2.imshow(paint_name, canvas)
+        draw_data['draw'] = 4
+        #cv2.circle(canvas,draw_data['coords'], draw_data['tamanho'], draw_data['cores'])
+        #cv2.imshow(paint_name, canvas)
         return True
     
     return False
@@ -98,11 +96,59 @@ def shake_prevention(draw_data, paint_name, canvas):
 
 
 
-def pintar_tela(draw_data, paint_name, canvas, shake):
-    paint = shake_prevention(draw_data, paint_name, canvas)
-    if paint == False:
-        cv2.line(canvas,draw_data['previous_coords'], draw_data['coords'], draw_data['cores'], draw_data['tamanho'])
-        
+def pintar_tela(drawing_data, paint_name, canvas, shake, video_stream):
+    #paint =
+    shake_prevention(drawing_data, paint_name, canvas)
+    #if paint == False:
+    #    cv2.line(canvas,draw_data['previous_coords'], draw_data['coords'], draw_data['cores'], draw_data['tamanho'])
+    show = canvas
+
+    if drawing_data['draw'] == 1:
+        cv2.line(canvas, (drawing_data['previous_coords'][0], drawing_data['previous_coords'][1]), drawing_data['coords'], drawing_data['cores'], drawing_data['tamanho'])
+        drawing_data['previous_coords'] = drawing_data['coords']
+    elif drawing_data['draw'] in (2, 3): #save the pivot point for the circle/square
+        drawing_data['draw_previous'] = drawing_data['draw']
+        drawing_data['draw'] = 6
+        drawing_data['previous_coords'] = drawing_data['coords']
+    elif drawing_data['draw'] == 4: #desenhar um ponto
+        cv2.circle(canvas, drawing_data['coords'], drawing_data['tamanho']//2, drawing_data['cores'], -1) #depois o raio do circulo vai depender do tamanho
+        drawing_data['draw'] = 1
+        drawing_data['previous_coords'] = drawing_data['coords']
+    elif drawing_data['draw'] == 5: #circulo foi aceite, colocar depois acao anterior para verificar se era mesmo um circulo
+        print("previous", drawing_data['previous_coords'])
+        print("now", drawing_data['coords'])
+        if drawing_data['draw_previous'] == 3:
+            cv2.rectangle(canvas, (drawing_data['previous_coords'][0], drawing_data['previous_coords'][1]), drawing_data['coords'], drawing_data['cores'], drawing_data['tamanho'])
+        elif drawing_data['draw_previous'] == 2:
+            dist = int(np.sqrt( (drawing_data['previous_coords'][0] - drawing_data['coords'][0]) ** 2 + (drawing_data['previous_coords'][1] - drawing_data['coords'][1]) ** 2))
+            cv2.circle(canvas, (drawing_data['previous_coords'][0], drawing_data['previous_coords'][1]), dist, drawing_data['cores'], drawing_data['tamanho'])
+        drawing_data['draw'] = 4
+        drawing_data['previous_coords'] = drawing_data['coords']
+    elif drawing_data['draw'] == 6:
+        print("HERE", drawing_data['previous_coords'])
+        img_cpy = np.copy(canvas)
+        if drawing_data['draw_previous'] == 3:
+            cv2.rectangle(img_cpy, (drawing_data['previous_coords'][0], drawing_data['previous_coords'][1]), drawing_data['coords'], drawing_data['cores'], drawing_data['tamanho'])
+        elif drawing_data['draw_previous'] == 2:
+            dist = int(np.sqrt( (drawing_data['previous_coords'][0] - drawing_data['coords'][0]) ** 2 + (drawing_data['previous_coords'][1] - drawing_data['coords'][1]) ** 2))
+            cv2.circle(img_cpy, (drawing_data['previous_coords'][0], drawing_data['previous_coords'][1]), dist, drawing_data['cores'], drawing_data['tamanho'])
+        show = img_cpy
+
+
+    if video_stream:
+        canvas_video = video_frame.copy()
+        mask_b = cv2.inRange(show, (0,0,0), (255,0,0))
+        mask_g = cv2.inRange(show, (0,255,0), (0,255,0))
+        mask_r = cv2.inRange(show, (0,0,255), (0,0,255))
+
+        canvas_video[mask_b>0] = (255,0,0)
+        canvas_video[mask_g>0] = (0,255,0)
+        canvas_video[mask_r>0] = (0,0,255)
+
+        cv2.imshow(paint_name, canvas_video)
+
+    else:
+        cv2.imshow(paint_name, show)
 
 
 #lapis vai detetar e dar a posicao do lapis, sem ser filtrada
@@ -160,13 +206,15 @@ def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, sha
 
     draw_data = {'cores' : (0,0,0), # comeca a preto
                  'tamanho' : 3, #3 pixeis inicialmente, depois ver se e muito 
-                 'action': 0, 
+                 'draw': 0, 
+                 'draw_previous': 0,
                  'centro': (-1,-1), #-coordenadas do ponto inicial do quadrado ou elipse ou linha
                  'coords': (-1,-1), #coordenadas do centroide atuais
                  'previous_coords' : (-1,-1), #coordenadas do centroide anteriores
+                 'pencil_down':False
            }
-    drawing_data_mouse = {'pencil_down' : False, 'coords' : (0,0), 'previous_coords':(-1,-1), 'cores': draw_data['cores'] , 'tamanho': draw_data['tamanho']}
-    cv2.setMouseCallback(video_name, partial(mouseCallback, image = canvas, window_name = paint_name, drawing_data = drawing_data_mouse, shake_detection = shake))
+    #drawing_data_mouse = {'pencil_down' : False, 'coords' : (0,0), 'previous_coords':(-1,-1), 'cores': draw_data['cores'] , 'tamanho': draw_data['tamanho']}
+    cv2.setMouseCallback(video_name, partial(mouseCallback, image = canvas, window_name = paint_name, drawing_data = draw_data, shake_detection = shake, video_stream=video_stream))
 
 
     while(True):
@@ -174,29 +222,16 @@ def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, sha
             
 
             #chama o lapis
-            draw_data['previous_coords'] = draw_data['coords']
+            #draw_data['previous_coords'] = draw_data['coords']
             coords = lapis(video_frame,limits, video_name, mask_name)
             draw_data['coords'] = coords
+            print(draw_data['coords'])
+            print(draw_data['previous_coords'])
 
-
-            key = comandos(draw_data, canvas, drawing_data_mouse)
+            key = comandos(draw_data, canvas)
             #if paint == False:
-            pintar_tela(draw_data, paint_name, canvas, shake)
+            pintar_tela(draw_data, paint_name, canvas, shake, video_stream)
 
-            if video_stream:
-                canvas_video = video_frame.copy()
-                mask_b = cv2.inRange(canvas, (0,0,0), (255,0,0))
-                mask_g = cv2.inRange(canvas, (0,255,0), (0,255,0))
-                mask_r = cv2.inRange(canvas, (0,0,255), (0,0,255))
-
-                canvas_video[mask_b>0] = (255,0,0)
-                canvas_video[mask_g>0] = (0,255,0)
-                canvas_video[mask_r>0] = (0,0,255)
-
-                cv2.imshow(paint_name, canvas_video)
-
-            else:
-                cv2.imshow(paint_name, canvas)
             
             #so para teste
             #key = cv2.waitKey(5)
