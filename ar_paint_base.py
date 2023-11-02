@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import cv2
+import random
 import numpy as np
 import argparse
 from functools import partial
@@ -9,6 +10,8 @@ from functions import apply_mask
 import json
 import datetime
 from PIL import Image
+
+image_original = None 
 
 def mouseCallback(event,x,y,flags,*userdata, image,window_name, drawing_data, shake_detection, video_stream):
     drawing_data['coords'] = (x,y)
@@ -45,11 +48,9 @@ def comandos(draw_data, canvas):
     elif k == ord('+'):
         if draw_data['tamanho'] < 50:
             draw_data['tamanho'] = draw_data['tamanho'] + 2
-            #draw_data_mouse['tamanho'] = draw_data_mouse['tamanho'] + 2
     elif k == ord('-'):
         if draw_data['tamanho'] > 2:
             draw_data['tamanho'] = draw_data['tamanho'] - 2
-            #draw_data_mouse['tamanho'] = draw_data_mouse['tamanho'] - 2
     elif k == ord('w'):
         now = datetime.datetime.now()
         data_hora = now.strftime("%a_%b_%d_%H:%M:S_%Y")
@@ -57,7 +58,9 @@ def comandos(draw_data, canvas):
         cv2.imwrite(filename, canvas)
         return 6; #guardar a imagem
     elif k == ord('c'):
-        canvas.fill(255)
+        global image_original
+        #canvas.fill(255)
+        np.copyto(canvas, image_original)
         return k #limpar a imagem
     elif k == ord('a'):
         draw_data['draw'] = 5
@@ -198,7 +201,57 @@ def lapis(video_frame, limits, video_name, mask_name):
     
     return centroid_x, centroid_y
 
+def cria_zonas(zonas):
+    global image_original
+    height, width, nc = image_original.shape
 
+
+    x_y = random.randint(0,1)                
+
+    font = cv2.FONT_HERSHEY_SIMPLEX 
+    org = (50, 50) 
+    fontScale = 1
+    color = (0, 0, 0) 
+    thickness = 2
+       
+    cores = [1, 2, 3, 4, 5]
+
+
+    zonas_list = []
+    for i in range(zonas):
+        x_y = 1 - x_y
+        if x_y == 0:
+            x_1 = random.randint(20, width-20)
+            x_2 = random.randint(20,width-20)
+            cv2.line(image_original, (x_1, 0), (x_2, height), (0,0,0), 3)
+
+            y = height // 2
+
+            half = (x_1 + x_2) // 2
+
+            zonas_list.append(((x_1,0) ,(x_2,  height)))
+        else:
+            y_1 = random.randint(20,height-20)
+            y_2 = random.randint(20,height-20)
+
+            x = width // 2
+            half = (y_2 + y_1) // 2
+
+            cv2.line(image_original, (0, y_1), (width, y_2), (0,0,0), 3)
+            zonas_list.append(((0, y_1), (width ,y_2)))
+    
+    image_gray = cv2.cvtColor(image_original, cv2.COLOR_BGR2GRAY)
+    output = cv2.connectedComponentsWithStats(image_gray)
+    (numLabels, labels, stats, centroids) = output
+
+    print("CENTOIRDS", centroids)
+
+    l = len(centroids)
+    for i in range(1, l):
+        (x,y) = centroids[i]
+        x1 = int(x) - 5
+        y1 = int(y) + 10
+        image_rgb = cv2.putText(image_original, str(cores[(i+1)//5]), (x1, y1), font,  fontScale, color, thickness, cv2.LINE_AA) 
 
 
 #funcao principal, onde se executara o ciclo
@@ -296,8 +349,13 @@ def main() :
         cv2.resizeWindow(paint_name, window_width, window_height)
 
         #Criar tela
+        global image_original
+        image_original = np.ones((video_frame.shape[0],video_frame.shape[1],3), dtype=np.uint8)*255
 
-        canvas = np.ones((video_frame.shape[0],video_frame.shape[1],3), dtype=np.uint8)*255
+        cria_zonas(3)
+
+        canvas = np.copy(image_original) 
+        #np.ones((video_frame.shape[0],video_frame.shape[1],3), dtype=np.uint8)*255
 
 
         cv2.imshow(paint_name, canvas)
