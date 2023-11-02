@@ -13,7 +13,7 @@ from PIL import Image
 
 image_original = None 
 
-def mouseCallback(event,x,y,flags,*userdata, image,window_name, drawing_data, shake_detection, video_stream):
+def mouseCallback(event,x,y,flags,*userdata, image,window_name, drawing_data, shake_detection, video_stream, video_frame):
     drawing_data['coords'] = (x,y)
 
     if (event == cv2.EVENT_LBUTTONDOWN):
@@ -99,7 +99,7 @@ def shake_prevention(draw_data, paint_name, canvas):
 
 
 
-def pintar_tela(drawing_data, paint_name, canvas, shake, video_stream):
+def pintar_tela(drawing_data, paint_name, canvas, shake, video_stream, video_frame):
     #paint =
     shake_prevention(drawing_data, paint_name, canvas)
     #if paint == False:
@@ -255,7 +255,7 @@ def cria_zonas(zonas):
 
 
 #funcao principal, onde se executara o ciclo
-def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, shake,video_stream):
+def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, shake,video_stream, video_frame):
 
     draw_data = {'cores' : (0,0,0), # comeca a preto
                  'tamanho' : 3, #3 pixeis inicialmente, depois ver se e muito 
@@ -267,7 +267,7 @@ def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, sha
                  'pencil_down':False
            }
     #drawing_data_mouse = {'pencil_down' : False, 'coords' : (0,0), 'previous_coords':(-1,-1), 'cores': draw_data['cores'] , 'tamanho': draw_data['tamanho']}
-    cv2.setMouseCallback(video_name, partial(mouseCallback, image = canvas, window_name = paint_name, drawing_data = draw_data, shake_detection = shake, video_stream=video_stream))
+    cv2.setMouseCallback(video_name, partial(mouseCallback, image = canvas, window_name = paint_name, drawing_data = draw_data, shake_detection = shake, video_stream=video_stream, video_frame=video_frame))
 
 
     while(True):
@@ -283,7 +283,7 @@ def pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, sha
 
             key = comandos(draw_data, canvas)
             #if paint == False:
-            pintar_tela(draw_data, paint_name, canvas, shake, video_stream)
+            pintar_tela(draw_data, paint_name, canvas, shake, video_stream, video_frame)
 
             
             #so para teste
@@ -362,7 +362,7 @@ def main() :
 
         
         #chama pintar
-        pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, shake, video_stream)
+        pintar(limits, video_capture, video_name, mask_name, paint_name, canvas, shake, video_stream, video_frame)
         
             
         return 0
